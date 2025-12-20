@@ -2,7 +2,7 @@
 一些Archlinux的小工具
 
 
-修改镜像源
+修改镜像源, 启用multilib源, 添加archlinuxcn镜像源
 ```bash
-$ curl -sL https://github.com/wlonelyw/arch-script/blob/main/script/mirror.sh | bash
+$ bash -c "$(curl -sSL https://github.com/wlonelyw/arch-script/raw/refs/heads/main/script/mirrors.sh)"
 ```
