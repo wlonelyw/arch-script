@@ -1,34 +1,52 @@
 #!/bin/bash
 
 # mirror.sh
+if [[ "$EUID" -eq 0 ]] && [[ -f /etc/arch-release && -d /run/archiso ]]; then
+    _sudo=""
+    _exec=""
+else
+    _sudo="sudo"
+    _exec="echo"
+fi
 
-# function
 mirror() {
-    echo "pacman Change mirror source"
-    echo "Enter the country code."
+    echo "pacman Change Mirror Source"
 
-    local country="CN"
-    read -p "(default: CN) (global: all) " country
+    local country=""
+    if ipv4_tmp=$(curl -sf ipv4.ip.sb); then
+        ipv4="$ipv4_tmp"
+        country=$(curl -sS https://ipinfo.io/$ipv4 | grep -oP '(?<="country": ")[^"]*')
+        echo "IPv4: $ipv4"
+    fi
 
+    if ipv6_tmp=$(curl -sf ipv6.ip.sb); then
+        ipv6="$ipv6_tmp"
+        country=$(curl -sS https://ipinfo.io/$ipv4 | grep -oP '(?<="country": ")[^"]*')
+        echo "IPv6: $ipv6"
+    fi
+
+    [ -z "$country" ] && echo "Fail" && exit 1
+
+    $_exec systemctl stop reflector
+    echo "Get And Change Mirror Source List"
     url="https://archlinux.org/mirrorlist/?country=${country}&protocol=https&ip_version=4&ip_version=6&use_mirror_status=on"
-    echo "Get mirror source list"
-    curl -L -s $url -o mirrorlist
-    echo "Change pacman mirror source list"
-    sed -i 's/#Server/Server/g' /etc/pacman.d/mirrorlist
-    #pacman -Sy
+    $_sudo curl -sSL $url -o /etc/pacman.d/mirrorlist
+    $_sudo sed -i 's/#Server/Server/g' /etc/pacman.d/mirrorlist
+    echo "Sync packages Database..."
+    $_sudo pacman -Sy --noconfirm > /dev/null
     echo "Done"
 }
 
 pacman() {
-    echo "Enable multilib mirror source ?"
-    read -p "(Y/N) " yn
+    echo "Enable MultiLib?"
+    read -p "(Y/N): " yn
     case "${yn:-N}" in
     [Yy])
-        echo "Enable multilib"
-        sed -z -i 's|#\[multilib\]\n#Include = /etc/pacman.d/mirrorlist|\[multilib\]\nInclude = /etc/pacman.d/mirrorlist|g' /etc/pacman.conf
+        echo "Enable MultiLib..."
+        $_sudo sed -z -i 's|#\[multilib\]\n#Include = /etc/pacman.d/mirrorlist|\[multilib\]\nInclude = /etc/pacman.d/mirrorlist|g' /etc/pacman.conf
 
-        echo "Sync package database..."
-        sudo pacman -Sy --noconfirm > /dev/null
+        echo "Sync packages Database..."
+        $_sudo pacman -Sy --noconfirm > /dev/null
 
         echo "Done"
         ;;
@@ -38,18 +56,18 @@ pacman() {
     esac
     unset yn
 
-    echo "Add archlinuxcn mirror source?"
-    read -p "(Y/N) " yn
+    echo "Add archlinuxcn?"
+    read -p "(Y/N): " yn
     case "${yn:-N}" in
     [Yy])
 
-        echo "Add archlinuxcn"
-        sed -i '$a #\n[archlinuxcn]\nServer = https://mirrors.tuna.tsinghua.edu.cn/archlinuxcn/\$arch' /etc/pacman.conf
+        echo "archlinuxcn"
+        $_sudo sed -i '$a #\n[archlinuxcn]\nServer = https://mirrors.tuna.tsinghua.edu.cn/archlinuxcn/\$arch' /etc/pacman.conf
 
-        echo "Sync package database..."
-        sudo pacman -Sy --noconfirm > /dev/null
+        echo "Sync packages Database..."
+        $_sudo pacman -Sy --noconfirm > /dev/null
         echo "Add archlinuxcn-keyring"
-        sudo pacman -S archlinuxcn-keyring --noconfirm
+        $_sudo pacman -S archlinuxcn-keyring --noconfirm
 
         echo "Done"
         ;;
@@ -65,12 +83,12 @@ exit_() {
     read -n 1 -s
 }
 
-# main
 if [[ -f /etc/arch-release && -d /run/archiso ]]; then
     mirror
     exit_
     exit
 else
+    mirror
     pacman
     exit_
     exit
