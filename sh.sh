@@ -7,15 +7,15 @@ source ./txt/environment.txt
 
 function archiso {
     local PS3="select: "
-    options=("Change Mirror" "Sync Timezone" "UEFI Check")
+    local options=("Change Mirror" "Sync Timezone" "UEFI Check")
     local opt=""
 
 }
 
 function archlinux {
     local PS3="选择: "
-    option=("更换镜像源" "自动同步时区")
-
+    local option=("自动更换镜像源" "自动同步时区")
+    local opt=""
 
 }
 
